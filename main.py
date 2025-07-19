@@ -42,14 +42,35 @@ def init_db():
 
 init_db() # Вызываем таблицу бд
 
-# Обрабатываем команду старт
+"""Функция, проверяющая роль пользователя (driver, administrator, None)"""
+def check_user_role(telegram_id):
+    try:
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+        
+        cur.execute("SELECT role FROM users WHERE telegram_id = ?", (telegram_id,))
+        result = cur.fetchall()
+
+        if result:
+            return result[0] # Пользователь найден
+        else:
+            return None # Пользователь не найден
+
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+    except IOError as e:
+        print(f"Ошибка ввода/вывода: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+"""Обработчик команды start"""
 @bot.message_handler(commands=['start'])
 def menu_authorizen(message):
     markup_main = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup_main.add(types.KeyboardButton("Регистрация"), types.KeyboardButton("Войти"))
 
     bot.send_message(message.chat.id, "Приветствую тебя, пользователь! Для начала работы пройди регистрацию или войди в систему", reply_markup=markup_main)
-
 
 """Регистрация пользователя"""
 @bot.message_handler(func=lambda message: message.text == 'Регистрация')
@@ -63,7 +84,7 @@ def register_password(message):
         user_status[message.chat.id] = {
         "status": "registering",
         "username": message.text
-    }
+        }
         
         bot.send_message(message.chat.id, "Теперь введите пароль")
         bot.register_next_step_handler(message, register_finish)
@@ -152,22 +173,156 @@ def log_finish(message):
         cur.close()
         conn.close()
 
-"""Главное меню для пользователей"""
-@bot.message_handler(user_status['status'] == 'logged_in')
+"""Регистрация админа"""
+@bot.message_handler(func=lambda message: message.text == "feiwfwijfE[EAWFOPWEINPAP]fdw")
+def registeradm_start(message):
+    bot.send_message(message.chat.id, "Регистрация администратора. Введите имя")
+    bot.register_next_step_handler(message, registeradm_password)
+
+def registeradm_password(message):
+    admin_name = message.text
+
+    user_status[message.chat.id] = {
+        "status": "registering",
+        "username": message.text
+        }
+    
+    bot.send_message(message.chat.id, "Отлично, теперь введите Ваш пароль")
+    bot.register_next_step_handler(message, registeradm_finish)
+
+def registeradm_finish(message, admin_name):
+    try:
+        admin_name = user_status[message.chat.id]["username"]
+        admin_password = message.text
+
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM users WHERE username = ?", (admin_name,))
+        db_info = cur.fetchall()
+
+        # Проверяем, регестрировался ли раннее пользователь
+        if db_info:
+            bot.send_message(message.chat.id, 'Такой администратор уже есть в таблице базы данных. Выполните вход')
+            return menu_authorizen(message)  
+        else:
+            cur.execute("INSERT INTO users (telegram_id, username, role, password) VALUES (?, ?, ?, ?)", 
+                        (message.chat.id, admin_name, 'administrator', admin_password))
+            conn.commit()
+
+            user_status[message.chat.id] = {
+            "status": "logged_in",
+            "username": admin_name
+            }
+
+            bot.send_message(message.chat.id, "Регистрация прошла успешно!")
+            return admin_menu(message)
+        
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+    except  IOError as e:
+        print(f"Ошибка ввода/вывода: {e}")
+    finally:
+        cur.close()
+        conn.close()
+        
+"""Вход от имени администратора"""
+@bot.message_handler(func=lambda message: message.text == "fowqf[oFG[GEAWN[GNA[GWN[[gn]]")
+def logadm_start(message):
+    bot.send_message(message.chat.id, "Для входа в панель управления администратора нашите ваше имя")
+    bot.register_next_step_handler(message, logadm_password)
+
+def logadm_password(message):
+    admin_name = message.text
+    
+    user_status[message.chat.id] = {
+        "status": "logging_in",
+        "username": message.text
+    }
+
+    bot.send_message(message.chat.id, "Отлично, теперь введите Ваш пароль")
+    bot.register_next_step_handler(message, logadm_finish)
+
+def logadm_finish(message, admin_name):
+    try:
+        admin_name = user_status[message.chat.id]["username"]
+        admin_password = message.text
+
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM users WHERE username = ? AND password = ?", 
+                    (admin_name, admin_password,))
+        db_values = cur.fetchall()
+
+        # Если совпадение было найдено
+        if db_values:
+            bot.send_message(message.chat.id, "Вы вошли в систему!")
+                
+            user_status[message.chat.id] = {
+                "status": "logged_in",
+                "username": admin_name
+            }
+            
+            return admin_menu(message)
+        else:
+            bot.send_message(message.chat.id, "Такого администратора нет в базе данных!")
+            return menu_authorizen(message)
+
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+    except IOError as e:
+        print(f"Ошибка ввода/вывода: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+"""Главное меню """
+@bot.message_handler(func=lambda message: user_status.get(message.chat.id, {}).get('status') == 'logged_in')
 def main_menu(message):
-    main_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    main_markup.add(types.KeyboardButton("Доходы"), types.KeyboardButton("Расходы"))
+    role = check_user_role(message.chat.id)
 
-    bot.message_handler(message.chat.id, "Вы находитесь в главном меню. Выберите раздел")
+    if role == "driver": 
+        main_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        main_markup.add(types.KeyboardButton("Доходы"), 
+                       types.KeyboardButton("Расходы"), 
+                       types.KeyboardButton("Статус"))
 
-"""Раздел доходы"""
+        bot.send_message(message.chat.id, 
+                        "Вы находитесь в главном меню. Выберите раздел",
+                        reply_markup=main_markup)
+    elif role == "administrator":
+        admin_menu(message) # Убрали return, просто вызываем функцию
+    else:
+        return None
+
+"""Разделы для пользователей"""
 @bot.message_handler(func=lambda message: message.text == "Доходы")
+@bot.message_handler(func=lambda message: message.text == "Расходы")
+@bot.message_handler(func=lambda message: message.text == "Статус")
 def income(message):
+    user_id = message.chat.id
+    
     web_markup = InlineKeyboardMarkup()
-
-    web_markup.add(InlineKeyboardButton="Зайти в web-приложение", web_app=WebAppInfo(url=""))
+    web_markup.add(InlineKeyboardButton(text="Зайти в web-приложение", 
+                                        web_app=WebAppInfo(url=f"https://shokerrr777.github.io/taxi_report/?user_id={user_id}")))
+    
     bot.send_message(message.chat.id, "Перейдите в web-приложение для дальнейших действий", reply_markup=web_markup)
     bot.send_message(reply_markup=ReplyKeyboardRemove())
 
+"""Главное меню администратора"""
+@bot.message_handler(None)
+def admin_menu(message):
+    user_id = message.chat.id
+    
+    admin_markup = InlineKeyboardMarkup()
+    admin_markup.add(InlineKeyboardButton(text="Зайти в web-приложение", 
+                                          web_app=WebAppInfo(url=f"https://shokerrr777.github.io/taxi_report/?user_id={user_id}")))
+    
+    bot.send_message(message.chat.id, "Добро пожаловать в панель управления администратора! Для дальнейших действий перейдите в Web-приложение:",
+                     reply_markup=admin_markup)
+    bot.send_message(reply_markup=ReplyKeyboardRemove())
+
+# Запуск нашей программы
 if __name__ == "__main__":
     bot.polling(non_stop=True) # Для того, чтобы наша программа работа без остановки
