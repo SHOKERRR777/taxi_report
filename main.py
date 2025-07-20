@@ -27,11 +27,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            type TEXT NOT NULL,                         # 'income' или 'expense'
-            category TEXT,                              # 'order_payment', 'extra_payment' и т.д.
-            amount REAL NOT NULL,                       # Сумма
-            comment TEXT,                               # Комментарий
-            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   # Время    
+            type TEXT NOT NULL,                         
+            category TEXT,                              
+            amount REAL NOT NULL,                       
+            comment TEXT,                               
+            date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,       
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ''')
@@ -40,7 +40,8 @@ def init_db():
     cur.close()
     conn.close()
 
-init_db() # Вызываем таблицу бд
+# Активируем функцию, вызывающую таблицы базы данных
+init_db() 
 
 """Функция, проверяющая роль пользователя (driver, administrator, None)"""
 def check_user_role(telegram_id):
@@ -111,11 +112,13 @@ def register_finish(message):
 
             user_status[message.chat.id] = {
             "status": "logged_in",
-            "username": user_name
+            "username": user_name,
+            "role" : "driver",
             }
 
             bot.send_message(message.chat.id, "Регистрация прошла успешно!")
-        
+            return main_menu(message)
+
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
     except  IOError as e:
@@ -159,8 +162,11 @@ def log_finish(message):
                 
             user_status[message.chat.id] = {
                 "status": "logged_in",
-                "username": user_name
+                "username": user_name,
+                "role" : "driver",
             }
+
+            return main_menu(message)
         else:
             bot.send_message(message.chat.id, "Такого пользователя нет в базе данных!")
             return menu_authorizen(message)
@@ -190,7 +196,7 @@ def registeradm_password(message):
     bot.send_message(message.chat.id, "Отлично, теперь введите Ваш пароль")
     bot.register_next_step_handler(message, registeradm_finish)
 
-def registeradm_finish(message, admin_name):
+def registeradm_finish(message):
     try:
         admin_name = user_status[message.chat.id]["username"]
         admin_password = message.text
@@ -212,7 +218,8 @@ def registeradm_finish(message, admin_name):
 
             user_status[message.chat.id] = {
             "status": "logged_in",
-            "username": admin_name
+            "username": admin_name,
+            "role" : "administrator",
             }
 
             bot.send_message(message.chat.id, "Регистрация прошла успешно!")
@@ -261,7 +268,8 @@ def logadm_finish(message, admin_name):
                 
             user_status[message.chat.id] = {
                 "status": "logged_in",
-                "username": admin_name
+                "username": admin_name,
+                "role" : "administrator",
             }
             
             return admin_menu(message)
@@ -277,24 +285,25 @@ def logadm_finish(message, admin_name):
         cur.close()
         conn.close()
 
-"""Главное меню """
-@bot.message_handler(func=lambda message: user_status.get(message.chat.id, {}).get('status') == 'logged_in')
+"""Главное меню"""
 def main_menu(message):
     role = check_user_role(message.chat.id)
 
-    if role == "driver": 
-        main_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        main_markup.add(types.KeyboardButton("Доходы"), 
-                       types.KeyboardButton("Расходы"), 
-                       types.KeyboardButton("Статус"))
+    if user_status.get(message.chat.id, {}).get('status') == "loged_in":
+        if role == "driver": 
+            main_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            main_markup.add(types.KeyboardButton("Доходы"), 
+                        types.KeyboardButton("Расходы"), 
+                        types.KeyboardButton("Статус"))
 
-        bot.send_message(message.chat.id, 
-                        "Вы находитесь в главном меню. Выберите раздел",
-                        reply_markup=main_markup)
-    elif role == "administrator":
-        admin_menu(message) # Убрали return, просто вызываем функцию
+            bot.send_message(message.chat.id, 
+                            "Вы находитесь в главном меню. Выберите раздел",
+                            reply_markup=main_markup)
+        elif role == "administrator":
+            admin_menu(message) # Убрали return, просто вызываем функцию
     else:
-        return None
+        bot.send_message(message.chat.id, "Для того, чтобы войти в меню, необходимо пройти регистрацию или войти в аккаунт")
+        menu_authorizen(message)
 
 """Разделы для пользователей"""
 @bot.message_handler(func=lambda message: message.text == "Доходы")
@@ -308,10 +317,11 @@ def income(message):
                                         web_app=WebAppInfo(url=f"https://shokerrr777.github.io/taxi_report/?user_id={user_id}")))
     
     bot.send_message(message.chat.id, "Перейдите в web-приложение для дальнейших действий", reply_markup=web_markup)
-    bot.send_message(reply_markup=ReplyKeyboardRemove())
+    bot.send_message(message.chat.i, "", reply_markup=ReplyKeyboardRemove())
 
 """Главное меню администратора"""
-@bot.message_handler(None)
+@bot.message_handler(func=lambda message: (user_status.get(message.chat.id, {}.get('status') == 'logged_in')) and 
+                     (check_user_role(message.chat.id) == "administrator"))
 def admin_menu(message):
     user_id = message.chat.id
     
@@ -321,7 +331,18 @@ def admin_menu(message):
     
     bot.send_message(message.chat.id, "Добро пожаловать в панель управления администратора! Для дальнейших действий перейдите в Web-приложение:",
                      reply_markup=admin_markup)
-    bot.send_message(reply_markup=ReplyKeyboardRemove())
+    bot.send_message(message.chat.id, "", reply_markup=ReplyKeyboardRemove())
+
+"""Обработчик команды Выход"""
+@bot.message_handler(commands=['exit'])
+def exit_func(message):
+    bot.send_message(message.chat.id, "Вы вышли из этого аккаунта")
+    
+    user_status[message.chat.id] = {
+        "status": None,
+        "username": None
+        }
+
 
 # Запуск нашей программы
 if __name__ == "__main__":
