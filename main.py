@@ -313,7 +313,7 @@ def income(message):
     
     web_markup = InlineKeyboardMarkup()
     web_markup.add(InlineKeyboardButton(text="Зайти в web-приложение", 
-                                        web_app=WebAppInfo(url=f"https://render.com/docs/web-services#port-binding/?user_id={user_id}")))
+                                        web_app=WebAppInfo(url=f"https://taxi-report.onrender.com/?user_id={user_id}")))
     
     bot.send_message(message.chat.id, "Перейдите в web-приложение для дальнейших действий", reply_markup=web_markup)
     bot.send_message(message.chat.id, "Там вы найдёте всю необходимую информацию", reply_markup=ReplyKeyboardRemove())
@@ -327,7 +327,7 @@ def admin_menu(message):
             
             admin_markup = InlineKeyboardMarkup()
             admin_markup.add(InlineKeyboardButton(text="Зайти в web-приложение", 
-                                                web_app=WebAppInfo(url=f"https://render.com/docs/web-services#port-binding/?user_id={user_id}")))
+                                                web_app=WebAppInfo(url=f"https://taxi-report.onrender.com/?user_id={user_id}")))
             
             bot.send_message(message.chat.id, "Добро пожаловать в панель управления администратора! Для дальнейших действий перейдите в Web-приложение:",
                             reply_markup=admin_markup)
