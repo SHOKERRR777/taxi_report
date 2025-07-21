@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 user_status = {}
 
-@app.route('/')
+@app.route('/{user_id}')
 def income():
     user_id = request.args.get('user_id')
 

@@ -7,6 +7,15 @@ bot = telebot.TeleBot('7572983938:AAHltoYubIPU9FD4UamicLHSFJ6fUQMXOQg') # Bot's 
 
 user_status = {} # Статус пользователя
 
+def init_status():
+    user_status = {
+                "status": "not_in",
+                "username": None,
+                "role" : None,
+            } 
+
+    return user_status # Возвращает статус пользователя
+
 def init_db():
     conn = sqlite3.connect('database.db')
     cur = conn.cursor()
@@ -40,30 +49,12 @@ def init_db():
     cur.close()
     conn.close()
 
-# Активируем функцию, вызывающую таблицы базы данных
-init_db() 
+init_db() # Активируем функцию, вызывающую таблицы базы данных
+init_status() # Активируем функцию, хранящую статус пользователя
 
 """Функция, проверяющая роль пользователя (driver, administrator, None)"""
-def check_user_role(telegram_id):
-    try:
-        conn = sqlite3.connect('database.db')
-        cur = conn.cursor()
-        
-        cur.execute("SELECT role FROM users WHERE telegram_id = ?", (telegram_id,))
-        result = cur.fetchall()
-
-        if result:
-            return result[0] # Пользователь найден
-        else:
-            return None # Пользователь не найден
-
-    except sqlite3.Error as e:
-        print(f"Ошибка базы данных: {e}")
-    except IOError as e:
-        print(f"Ошибка ввода/вывода: {e}")
-    finally:
-        cur.close()
-        conn.close()
+def check_user_role(chat_id):
+    return user_status.get(chat_id, {}).get("role")
 
 """Обработчик команды start"""
 @bot.message_handler(commands=['start'])
@@ -84,7 +75,8 @@ def register_password(message):
         
         user_status[message.chat.id] = {
         "status": "registering",
-        "username": message.text
+        "username": message.text,
+        "role" : "driver",
         }
         
         bot.send_message(message.chat.id, "Теперь введите пароль")
@@ -117,7 +109,7 @@ def register_finish(message):
             }
 
             bot.send_message(message.chat.id, "Регистрация прошла успешно!")
-            return main_menu(message)
+            main_menu(message)
 
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
@@ -138,7 +130,8 @@ def log_password(message):
 
     user_status[message.chat.id] = {
         "status": "logging_in",
-        "username": message.text
+        "username": message.text,
+        "role" : "driver",
     }
 
     bot.send_message(message.chat.id, "Теперь введите пароль")
@@ -166,10 +159,10 @@ def log_finish(message):
                 "role" : "driver",
             }
 
-            return main_menu(message)
+            main_menu(message)
         else:
             bot.send_message(message.chat.id, "Такого пользователя нет в базе данных!")
-            return menu_authorizen(message)
+            menu_authorizen(message)
 
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
@@ -190,7 +183,8 @@ def registeradm_password(message):
 
     user_status[message.chat.id] = {
         "status": "registering",
-        "username": message.text
+        "username": message.text,
+        "role" : "administrator",
         }
     
     bot.send_message(message.chat.id, "Отлично, теперь введите Ваш пароль")
@@ -210,7 +204,7 @@ def registeradm_finish(message):
         # Проверяем, регестрировался ли раннее пользователь
         if db_info:
             bot.send_message(message.chat.id, 'Такой администратор уже есть в таблице базы данных. Выполните вход')
-            return menu_authorizen(message)  
+            menu_authorizen(message)  
         else:
             cur.execute("INSERT INTO users (telegram_id, username, role, password) VALUES (?, ?, ?, ?)", 
                         (message.chat.id, admin_name, 'administrator', admin_password))
@@ -219,11 +213,11 @@ def registeradm_finish(message):
             user_status[message.chat.id] = {
             "status": "logged_in",
             "username": admin_name,
-            "role" : "administrator",
+            "role" : "administrator"
             }
 
             bot.send_message(message.chat.id, "Регистрация прошла успешно!")
-            return admin_menu(message)
+            admin_menu(message)
         
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
@@ -244,7 +238,8 @@ def logadm_password(message):
     
     user_status[message.chat.id] = {
         "status": "logging_in",
-        "username": message.text
+        "username": message.text,
+        "role" : "administrator",
     }
 
     bot.send_message(message.chat.id, "Отлично, теперь введите Ваш пароль")
@@ -272,10 +267,10 @@ def logadm_finish(message, admin_name):
                 "role" : "administrator",
             }
             
-            return admin_menu(message)
+            admin_menu(message)
         else:
             bot.send_message(message.chat.id, "Такого администратора нет в базе данных!")
-            return menu_authorizen(message)
+            menu_authorizen(message)
 
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
@@ -286,24 +281,28 @@ def logadm_finish(message, admin_name):
         conn.close()
 
 """Главное меню"""
+@bot.message_handler(commands=['menu'])
 def main_menu(message):
-    role = check_user_role(message.chat.id)
+    try:
+        role = check_user_role(message.chat.id)
+        if user_status.get(message.chat.id, {}).get('status') == "logged_in":
+            if role == "driver":
+                main_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                main_markup.add(types.KeyboardButton("Доходы"), 
+                            types.KeyboardButton("Расходы"), 
+                            types.KeyboardButton("Статус"))
 
-    if user_status.get(message.chat.id, {}).get('status') == "loged_in":
-        if role == "driver": 
-            main_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            main_markup.add(types.KeyboardButton("Доходы"), 
-                        types.KeyboardButton("Расходы"), 
-                        types.KeyboardButton("Статус"))
+                bot.send_message(message.chat.id, "Вы находитесь в главном меню. Выберите раздел", reply_markup=main_markup)
+            elif role == "administrator":
+                admin_menu(message)
+        else:
+            bot.send_message(message.chat.id, "Для того, чтобы войти в меню, необходимо пройти регистрацию или войти в аккаунт")
+            menu_authorizen(message)
 
-            bot.send_message(message.chat.id, 
-                            "Вы находитесь в главном меню. Выберите раздел",
-                            reply_markup=main_markup)
-        elif role == "administrator":
-            admin_menu(message) # Убрали return, просто вызываем функцию
-    else:
-        bot.send_message(message.chat.id, "Для того, чтобы войти в меню, необходимо пройти регистрацию или войти в аккаунт")
-        menu_authorizen(message)
+    except TypeError as e:
+        print(f"Ошибка: {e}")
+    except telebot.Error as e:
+        print(f"Ошибка Телеграм-бота: {e}")
 
 """Разделы для пользователей"""
 @bot.message_handler(func=lambda message: message.text == "Доходы")
@@ -317,21 +316,28 @@ def income(message):
                                         web_app=WebAppInfo(url=f"https://shokerrr777.github.io/taxi_report/?user_id={user_id}")))
     
     bot.send_message(message.chat.id, "Перейдите в web-приложение для дальнейших действий", reply_markup=web_markup)
-    bot.send_message(message.chat.i, "", reply_markup=ReplyKeyboardRemove())
+    bot.send_message(message.chat.id, "Там вы найдёте всю необходимую информацию", reply_markup=ReplyKeyboardRemove())
 
 """Главное меню администратора"""
-@bot.message_handler(func=lambda message: (user_status.get(message.chat.id, {}.get('status') == 'logged_in')) and 
-                     (check_user_role(message.chat.id) == "administrator"))
+@bot.message_handler(commands=['admin_menu'])
 def admin_menu(message):
-    user_id = message.chat.id
-    
-    admin_markup = InlineKeyboardMarkup()
-    admin_markup.add(InlineKeyboardButton(text="Зайти в web-приложение", 
-                                          web_app=WebAppInfo(url=f"https://shokerrr777.github.io/taxi_report/?user_id={user_id}")))
-    
-    bot.send_message(message.chat.id, "Добро пожаловать в панель управления администратора! Для дальнейших действий перейдите в Web-приложение:",
-                     reply_markup=admin_markup)
-    bot.send_message(message.chat.id, "", reply_markup=ReplyKeyboardRemove())
+    try:    
+        if user_status.get(message.chat.id, {}).get('status') == 'logged_in' and check_user_role(message.chat.id) == "administrator":
+            user_id = message.chat.id
+            
+            admin_markup = InlineKeyboardMarkup()
+            admin_markup.add(InlineKeyboardButton(text="Зайти в web-приложение", 
+                                                web_app=WebAppInfo(url=f"https://shokerrr777.github.io/taxi_report/?user_id={user_id}")))
+            
+            bot.send_message(message.chat.id, "Добро пожаловать в панель управления администратора! Для дальнейших действий перейдите в Web-приложение:",
+                            reply_markup=admin_markup)
+            bot.send_message(message.chat.id, "Там вы найдёте всю необходимую информацию", reply_markup=ReplyKeyboardRemove())
+        else:
+            bot.send_message(message.chat.id, "Вы не являетесь администратором!")
+            menu_authorizen(message)
+
+    except TypeError as e:
+        print(f"Ошибка с типами данных: {e}")
 
 """Обработчик команды Выход"""
 @bot.message_handler(commands=['exit'])
@@ -339,11 +345,12 @@ def exit_func(message):
     bot.send_message(message.chat.id, "Вы вышли из этого аккаунта")
     
     user_status[message.chat.id] = {
-        "status": None,
-        "username": None
-        }
+            "status": "not_in",
+            "username": None,
+            "role" : None,
+        } 
 
 
 # Запуск нашей программы
 if __name__ == "__main__":
-    bot.polling(non_stop=True) # Для того, чтобы наша программа работа без остановки
+    bot.polling(non_stop=True) # Для того, чтобы наша программа работа без остановки 
