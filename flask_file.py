@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
@@ -23,20 +23,26 @@ def income():
         if not user_data:
             return "Пользователь не найден!", 404
         
-        # Формируем данные пользователя
-        user_info = {
-            'id' : user_data[0],
-            'telegram_id' : user_data[1],
-            'username' : user_data[2],
-            'role' : user_data[3],
-            'password' : user_data[4]
-        }
+        # Функция для создания json-файла, в котором будет храниться информация о пользователе и его дейсвиях
+        def user_json():
+            # Формируем данные пользователя
+            user_info = {
+                'id' : user_data[0],
+                'telegram_id' : user_data[1],
+                'username' : user_data[2],
+                'role' : user_data[3],
+                'password' : user_data[4],
+            }
+            
+            return jsonify(user_info) # Возвращает json-файл
         
-        if user_info['role'] == 'driver':
+        user_json() # Активируем функкцию
+
+        if jsonify['role'] == 'driver':
             cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
         else:
             cur.execute("SELECT * FROM transactions")
-        
+            
         db_info = cur.fetchall()
         list_transactions = [] # Список, хранящий всю информацию о таблице Транзакции
         list_transactions.append({
@@ -48,17 +54,19 @@ def income():
             "comment" : db_info[5],
             'datetime' : db_info[6],
         })
-
+            
         # Для каждого пользователя сделаем отдельное окно
-        if user_info['role'] == 'driver':
-            return render_template('user_menu.html', list_transactions=list_transactions, user_info=user_info)        
-        elif user_info['role'] == 'administrator':
-            return render_template('administrator_menu.html', list_transactions=list_transactions, user_info=user_info)
+        if jsonify['role'] == 'driver':
+            return render_template('user_menu.html', list_transactions=list_transactions, user_info=jsonify)        
+        elif jsonify['role'] == 'administrator':
+            return render_template('administrator_menu.html', list_transactions=list_transactions, user_info=jsonify)
         
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
     except IOError as e:
         print(f"Ошибка ввода/вывода: {e}")
+    except TypeError as e:
+        print(f"Ошибка типов данных: {e}")
     finally:
         cur.close()
         conn.close()
