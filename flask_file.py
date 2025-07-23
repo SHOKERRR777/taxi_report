@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 user_status = {}
 
-@app.route('/{user_id}')
+@app.route('/')
 def income():
     user_id = request.args.get('user_id')
 
@@ -23,27 +23,22 @@ def income():
         if not user_data:
             return "Пользователь не найден!", 404
         
-        # Функция для создания json-файла, в котором будет храниться информация о пользователе и его дейсвиях
-        def user_json():
-            # Формируем данные пользователя
-            user_info = {
-                'id' : user_data[0],
-                'telegram_id' : user_data[1],
-                'username' : user_data[2],
-                'role' : user_data[3],
-                'password' : user_data[4],
-            }
-            
-            return jsonify(user_info) # Возвращает json-файл
-        
-        user_json() # Активируем функкцию
+     
+        user_info = {
+            'id' : user_data[0],
+            'telegram_id' : user_data[1],
+            'username' : user_data[2],
+            'role' : user_data[3],
+            'password' : user_data[4],
+        }
 
-        if jsonify['role'] == 'driver':
+        if user_info['role'] == 'driver':
             cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
         else:
             cur.execute("SELECT * FROM transactions")
             
         db_info = cur.fetchall()
+
         list_transactions = [] # Список, хранящий всю информацию о таблице Транзакции
         list_transactions.append({
             "id" : db_info[0],
@@ -56,10 +51,10 @@ def income():
         })
             
         # Для каждого пользователя сделаем отдельное окно
-        if jsonify['role'] == 'driver':
-            return render_template('user_menu.html', list_transactions=list_transactions, user_info=jsonify)        
-        elif jsonify['role'] == 'administrator':
-            return render_template('administrator_menu.html', list_transactions=list_transactions, user_info=jsonify)
+        if user_info['role'] == 'driver':
+            return render_template('user_menu.html', list_transactions=list_transactions, list_user=[user_info])        
+        elif user_info['role'] == 'administrator':
+            return render_template('administrator_menu.html', list_transactions=list_transactions, list_user=[user_info])
         
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
