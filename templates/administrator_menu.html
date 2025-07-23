@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://telegram.org/js/telegram-web-app.js?58"></script>
-    <title>Панель управления администратора</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Панель администратора</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,11 +12,6 @@
             text-align: center;
             padding: 50px;
         }
-
-        h1 {
-            color: #333;
-        }
-
         .button {
             display: block;
             width: 200px;
@@ -28,28 +23,25 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .button:hover {
-            background-color: #0050a5;
         }
     </style>
 </head>
 <body>
-    {% for items in list_users %}
-        <h1>Панель администратора - {{ items['username']}}</h1>
+    {% if list_users %}
+        <h1>Добро пожаловать, {{ list_users[0]['username'] }}!</h1>
+    {% else %}
+        <h1>Добро пожаловать!</h1>
+    {% endif %}
 
-            <button class="button" onclick="handleAction('доход')">Администратор</button>
-            <button class="button" onclick="handleAction('расход')">Расход</button>
-            <button class="button" onclick="handleAction('статус')">Статус</button>
+    <button class="button" onclick="handleAction('доход')">Добавить доход</button>
+    <button class="button" onclick="handleAction('расход')">Добавить расход</button>
+    <button class="button" onclick="handleAction('статус')">Статус</button>
 
-            <script>
-                function handleAction(action) {
-                    alert("Вы нажали: " + action);
-                    // Здесь можно заменить alert на реальные действия, например, отправку запроса или переход по ссылке
-                }
-            </script>
-    {% endfor %}
+    <script>
+        function handleAction(action) {
+            alert("Вы выбрали: " + action);
+            // позже здесь можно отправлять данные в Flask через fetch()
+        }
+    </script>
 </body>
 </html>
