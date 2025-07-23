@@ -40,21 +40,22 @@ def income():
         db_info = cur.fetchall()
 
         list_transactions = [] # Список, хранящий всю информацию о таблице Транзакции
-        list_transactions.append({
-            "id" : db_info[0],
-            "user_id" : db_info[1],
-            "type" : db_info[2],
-            "category" : db_info[3],
-            "amount" : db_info[4],
-            "comment" : db_info[5],
-            'datetime' : db_info[6],
-        })
+        for items in db_info:
+            list_transactions.append({
+                "id" : items[0],
+                "user_id" : items[1],
+                "type" : items[2],
+                "category" : items[3],
+                "amount" : items[4],
+                "comment" : items[5],
+                'datetime' : items[6],
+            })
             
         # Для каждого пользователя сделаем отдельное окно
         if user_info['role'] == 'driver':
-            return render_template('user_menu.html', list_transactions=list_transactions, list_user=[user_info])        
+            return render_template('user_menu.html', list_transactions=list_transactions, list_users=[user_info])        
         elif user_info['role'] == 'administrator':
-            return render_template('administrator_menu.html', list_transactions=list_transactions, list_user=[user_info])
+            return render_template('administrator_menu.html', list_transactions=list_transactions, list_users=[user_info])
         
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
