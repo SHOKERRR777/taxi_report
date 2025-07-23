@@ -1,18 +1,13 @@
 import sqlite3
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, url_for, redirect
 
 app = Flask(__name__)
 
 user_status = {}
 
-# Главная страница
+"""Определение роли пользователя и перенаправление его на определённую панель"""
 @app.route('/')
-def index():
-    return render_template('index.html')
-
-# Страница для пользователя или администратора
-@app.route('/{user_id}')
 def income():
     user_id = request.args.get('user_id')
 
@@ -29,38 +24,14 @@ def income():
         if not user_data:
             return "Пользователь не найден!", 404
         
-        user_info = {
-            'id' : user_data[0],
-            'telegram_id' : user_data[1],
-            'username' : user_data[2],
-            'role' : user_data[3],
-            'password' : user_data[4],
-        }
+        role = user_data[3]
 
-        if user_info['role'] == 'driver':
-            cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
+        if role == 'driver':
+            return redirect(url_for('driver_panel', user_id=user_id))
+        elif role == 'administrator':
+            return redirect(url_for('admin_panel', user_id=user_id))
         else:
-            cur.execute("SELECT * FROM transactions")
-            
-        db_info = cur.fetchall()
-
-        list_transactions = [] # Список, хранящий всю информацию о таблице Транзакции
-        for items in db_info:
-            list_transactions.append({
-                "id" : items[0],
-                "user_id" : items[1],
-                "type" : items[2],
-                "category" : items[3],
-                "amount" : items[4],
-                "comment" : items[5],
-                'datetime' : items[6],
-            })
-            
-        # Для каждого пользователя сделаем отдельное окно
-        if user_info['role'] == 'driver':
-            return render_template('user_menu.html', list_transactions=list_transactions, list_user=[user_info])        
-        elif user_info['role'] == 'administrator':
-            return render_template('administrator_menu.html', list_transactions=list_transactions, list_user=[user_info])
+            return render_template('index.html')
         
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
@@ -68,6 +39,106 @@ def income():
         print(f"Ошибка ввода/вывода: {e}")
     except TypeError as e:
         print(f"Ошибка типов данных: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+"""Панель водителя"""
+@app.route('/driver')
+def driver_panel():
+    try:
+        user_id = request.args.get('user_id')
+        
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,))
+        user_data = cur.fetchall()
+        
+        list_users = []
+        for items in user_data:
+            list_users.append({
+                "id" : items[0],
+                "telegram_id" : items[1],
+                "username" : items[2],
+                "role" : items[3],
+                "password" : items[4],
+            })
+        
+        cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
+        trans_data = cur.fetchall()
+
+        list_trans = []
+        for items in trans_data:
+            list_trans.append({
+                "id" : items[0],
+                "user_id" : items[1],
+                "type" : items[2],
+                "category" : items[3],
+                "amount" : items[4],
+                "comment" : items[5],
+                "date" : items[6],
+            })
+
+        user_id = request.args.get('user_id')
+        return render_template('user_menu.html', list_users=list_users, list_trans=list_trans)
+    
+    except sqlite3.Error as e:
+        return f"Ошибка базы данных: {e}"
+    except TypeError as e:
+        return f"Ошибка с типами данных: {e}"
+    except IOError as e:
+        return f"Ошибка ввода/вывода: {e}"
+    finally:
+        cur.close()
+        conn.close()
+
+"""Панель администратора"""
+@app.route('/administrator')
+def admin_panel():
+    try:
+        user_id = request.args.get('user_id')
+        
+        conn = sqlite3.connect('database.db')
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,))
+        user_data = cur.fetchall()
+        
+        list_users = []
+        for items in user_data:
+            list_users.append({
+                "id" : items[0],
+                "telegram_id" : items[1],
+                "username" : items[2],
+                "role" : items[3],
+                "password" : items[4],
+            })
+        
+        cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
+        trans_data = cur.fetchall()
+
+        list_trans = []
+        for items in trans_data:
+            list_trans.append({
+                "id" : items[0],
+                "user_id" : items[1],
+                "type" : items[2],
+                "category" : items[3],
+                "amount" : items[4],
+                "comment" : items[5],
+                "date" : items[6],
+            })
+
+        user_id = request.args.get('user_id')
+        return render_template('administrator_menu.html', list_users=list_users, list_trans=list_trans)
+
+    except sqlite3.Error as e:
+        return f"Ошибка базы данных: {e}"
+    except TypeError as e:
+        return f"Ошибка с типами данных: {e}"
+    except IOError as e:
+        return f"Ошибка ввода/вывода: {e}"
     finally:
         cur.close()
         conn.close()
