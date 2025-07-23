@@ -28,7 +28,9 @@
 </head>
 <body>
     {% if list_users %}
-        <h1>Добро пожаловать, {{ list_users[0]['username'] }}!</h1>
+        {% for items in list_users %}
+            <h1>Добро пожаловать, {{ items[0]['username'] }}!</h1>
+        {% endfor %}
     {% else %}
         <h1>Добро пожаловать!</h1>
     {% endif %}
