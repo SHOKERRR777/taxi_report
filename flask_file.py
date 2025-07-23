@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 user_status = {}
 
-@app.route('/')
+@app.route('/{user_id}')
 def income():
     user_id = request.args.get('user_id')
 
@@ -53,9 +53,9 @@ def income():
             
         # Для каждого пользователя сделаем отдельное окно
         if user_info['role'] == 'driver':
-            return f"<h1>Водитель - Кирилл Крутой</h1>"       
+            return render_template('user_menu.html', list_transactions=list_transactions, list_user=[user_info])        
         elif user_info['role'] == 'administrator':
-            return render_template('administrator_menu.html', list_users=[user_info])
+            return render_template('administrator_menu.html', list_transactions=list_transactions, list_user=[user_info])
         
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
