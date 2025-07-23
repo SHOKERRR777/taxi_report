@@ -6,6 +6,12 @@ app = Flask(__name__)
 
 user_status = {}
 
+# Главная страница
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Страница для пользователя или администратора
 @app.route('/{user_id}')
 def income():
     user_id = request.args.get('user_id')
@@ -23,7 +29,6 @@ def income():
         if not user_data:
             return "Пользователь не найден!", 404
         
-     
         user_info = {
             'id' : user_data[0],
             'telegram_id' : user_data[1],
