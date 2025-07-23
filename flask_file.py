@@ -53,7 +53,7 @@ def income():
             
         # Для каждого пользователя сделаем отдельное окно
         if user_info['role'] == 'driver':
-            return render_template('user_menu.html', list_users=[user_info])        
+            return f"<h1>Водитель - {user_info['username']} </h1>"       
         elif user_info['role'] == 'administrator':
             return render_template('administrator_menu.html', list_users=[user_info])
         
