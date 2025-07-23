@@ -38,7 +38,7 @@
 </head>
 <body>
     {% for items in list_users %}
-        <h1>Панель водителя {{ items['username']}}</h1>
+        <h1>Панель водителя - {{ items['username']}}</h1>
 
         <button class="button" onclick="handleAction('доход')">Доход</button>
         <button class="button" onclick="handleAction('расход')">Расход</button>
