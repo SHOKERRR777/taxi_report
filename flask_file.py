@@ -27,9 +27,9 @@ def income():
         role = user_data[3]
 
         if role == 'driver':
-            return redirect(url_for('driver_panel', user_id=user_id))
+            return redirect(url_for('driver_panel'))
         elif role == 'administrator':
-            return redirect(url_for('admin_panel', user_id=user_id))
+            return redirect(url_for('admin_panel'))
         else:
             return render_template('index.html')
         
@@ -47,8 +47,6 @@ def income():
 @app.route('/driver')
 def driver_panel():
     try:
-        user_id = request.args.get('user_id')
-        
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
@@ -94,11 +92,9 @@ def driver_panel():
         conn.close()
 
 """Панель администратора"""
-@app.route('/administrator')
+@app.route('/administrator', methods=['GET'])
 def admin_panel():
     try:
-        user_id = request.args.get('user_id')
-        
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
