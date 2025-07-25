@@ -71,6 +71,10 @@ def driver_panel():
         cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
         trans_data = cur.fetchall()
 
+        # Если в таблице с транзакциями нет ни единой данной
+        if trans_data is None:
+            return render_template('user_menu.html',  list_users=list_users)
+        
         list_trans = []
         for items in trans_data:
             list_trans.append({
@@ -99,7 +103,7 @@ def driver_panel():
         conn.close()
 
 """Панель администратора"""
-@app.route('/administrator', methods=['GET'])
+@app.route('/administrator')
 def admin_panel():
     user_telegram_id = request.args.get('user_id')
     
@@ -125,7 +129,11 @@ def admin_panel():
         
         cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
         trans_data = cur.fetchall()
-
+        
+        # Если в таблице с транзакциями нет ни единой данной
+        if trans_data is None:
+            return render_template('administrator_menu.html',  list_users=list_users)
+        
         list_trans = []
         for items in trans_data:
             list_trans.append({
@@ -156,4 +164,4 @@ def admin_panel():
 # Запуск нашей программы
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
