@@ -1,5 +1,6 @@
 import sqlite3
 import os
+
 from flask import Flask, render_template, request, url_for, redirect
 
 app = Flask(__name__)
@@ -18,7 +19,7 @@ def income():
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,))
+        cur.execute("SELECT * FROM users")
         user_data = cur.fetchall()
 
         if not user_data:
@@ -46,16 +47,11 @@ def income():
 """Панель водителя"""
 @app.route('/driver')
 def driver_panel():
-    user_telegram_id = request.args.get('user_id')
-
-    if not user_telegram_id:
-        return "Вход запрещён!", 403
-    
     try:
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,))
+        cur.execute("SELECT * FROM users")
         user_data = cur.fetchall()
         
         list_users = []
@@ -68,9 +64,9 @@ def driver_panel():
                 "password" : items[4],
             })
         
-        cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
+        cur.execute("SELECT * FROM transactions")
         trans_data = cur.fetchall()
-
+        
         # Если в таблице с транзакциями нет ни единой данной
         if trans_data is None:
             return render_template('user_menu.html',  list_users=list_users)
@@ -87,9 +83,8 @@ def driver_panel():
                 "date" : items[6],
             })
 
-        user_id = request.args.get('user_id')
-        return render_template('user_menu.html', list_users=list_users, list_trans=list_trans)
-    
+        return render_template('administrator_menu.html', list_users=list_users, list_trans=list_trans)
+
     except sqlite3.Error as e:
         return f"Ошибка базы данных: {e}"
     except TypeError as e:
@@ -105,16 +100,11 @@ def driver_panel():
 """Панель администратора"""
 @app.route('/administrator')
 def admin_panel():
-    user_telegram_id = request.args.get('user_id')
-    
-    if not user_telegram_id:
-        return "Доступ запрещён!", 403
-    
     try:
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE telegram_id = ?", (user_id,))
+        cur.execute("SELECT * FROM users")
         user_data = cur.fetchall()
         
         list_users = []
@@ -127,7 +117,7 @@ def admin_panel():
                 "password" : items[4],
             })
         
-        cur.execute("SELECT * FROM transactions WHERE telegram_id = ?", (user_id,))
+        cur.execute("SELECT * FROM transactions")
         trans_data = cur.fetchall()
         
         # Если в таблице с транзакциями нет ни единой данной
@@ -146,7 +136,6 @@ def admin_panel():
                 "date" : items[6],
             })
 
-        user_id = request.args.get('user_id')
         return render_template('administrator_menu.html', list_users=list_users, list_trans=list_trans)
 
     except sqlite3.Error as e:
