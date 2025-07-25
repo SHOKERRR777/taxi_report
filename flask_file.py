@@ -46,6 +46,11 @@ def income():
 """Панель водителя"""
 @app.route('/driver')
 def driver_panel():
+    user_telegram_id = request.args.get('user_id')
+
+    if not user_telegram_id:
+        return "Вход запрещён!", 403
+    
     try:
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
@@ -87,6 +92,8 @@ def driver_panel():
         return f"Ошибка с типами данных: {e}"
     except IOError as e:
         return f"Ошибка ввода/вывода: {e}"
+    except Exception as e:
+        return f"Ошибка: {e}"
     finally:
         cur.close()
         conn.close()
@@ -94,6 +101,11 @@ def driver_panel():
 """Панель администратора"""
 @app.route('/administrator', methods=['GET'])
 def admin_panel():
+    user_telegram_id = request.args.get('user_id')
+    
+    if not user_telegram_id:
+        return "Доступ запрещён!", 403
+    
     try:
         conn = sqlite3.connect('database.db')
         cur = conn.cursor()
@@ -135,6 +147,8 @@ def admin_panel():
         return f"Ошибка с типами данных: {e}"
     except IOError as e:
         return f"Ошибка ввода/вывода: {e}"
+    except Exception as e:
+        return f"Ошибка: {e}"
     finally:
         cur.close()
         conn.close()
